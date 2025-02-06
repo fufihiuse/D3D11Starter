@@ -89,6 +89,19 @@ void Game::CreateGeometry()
 	// - But just to see how it's done...
 	unsigned int indices[] = { 0, 1, 2 };
 
+	// Load meshes
+	meshes.push_back(std::make_shared<Mesh>(WideToNarrow(FixPath(L"../../Assets/Models/sphere.obj")).c_str()));
+	meshes.push_back(std::make_shared<Mesh>(WideToNarrow(FixPath(L"../../Assets/Models/helix.obj")).c_str()));
+	meshes.push_back(std::make_shared<Mesh>(WideToNarrow(FixPath(L"../../Assets/Models/cube.obj")).c_str()));
+
+	// Create entities
+	entities.push_back(Entity(meshes[0], camera));
+
+	entities.push_back(Entity(meshes[1], camera));
+	entities[1].GetTransform()->SetPosition(2.5, 0, 0);
+
+	entities.push_back(Entity(meshes[2], camera));
+	entities[2].GetTransform()->SetPosition(-2.5, 0, 0);
 
 	// Create the two buffers
 	vertexBuffer = Graphics::CreateStaticBuffer(sizeof(Vertex), ARRAYSIZE(vertices), vertices);
@@ -325,6 +338,10 @@ void Game::Update(float deltaTime, float totalTime)
 	// Example input checking: Quit if the escape key is pressed
 	if (Input::KeyDown(VK_ESCAPE))
 		Window::Quit();
+
+	entities[0].GetTransform()->Rotate(0, 0, deltaTime * 2);
+	entities[1].GetTransform()->MoveAbsolute(0, -.025f * deltaTime, 0);
+	entities[2].GetTransform()->SetScale(1, 1, abs(1 + sin(totalTime)));
 
 	camera->Update(deltaTime);
 }

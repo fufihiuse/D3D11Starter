@@ -17,7 +17,7 @@ private:
 	//Microsoft::WRL::ComPtr<ID3D11DeviceContext>	context;
 
 	void CalculateTangents(Vertex* verts, int numVerts, unsigned int* indices, int numIndices);
-	void CreateBuffers(Vertex* vertices, unsigned int* indices, Microsoft::WRL::ComPtr<ID3D12Resource> device);
+	void CreateBuffers(Vertex* vertices, unsigned int* indices);
 
 public:
 	Microsoft::WRL::ComPtr<ID3D12Resource> GetVertexBuffer();
@@ -29,20 +29,9 @@ public:
 	unsigned int GetIndexCount();
 	void Draw();
 
-	Mesh(
-		Vertex* vertices,
-		unsigned int vertexCount,
-		unsigned int* indices,
-		unsigned int indexCount,
-		Microsoft::WRL::ComPtr<ID3D11DeviceContext> context,
-		Microsoft::WRL::ComPtr<ID3D11Device> device
-	);
+	Mesh(Vertex* vertices, unsigned int vertexCount, unsigned int* indices, unsigned int indexCount);
+	Mesh(const char* objFile);
 
-	Mesh(
-		const char* objFile,
-		Microsoft::WRL::ComPtr<ID3D11DeviceContext> context,
-		Microsoft::WRL::ComPtr<ID3D11Device> device
-	);
 	~Mesh();
 };
 

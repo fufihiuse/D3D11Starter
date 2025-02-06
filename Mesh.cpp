@@ -121,7 +121,7 @@ void Mesh::CalculateTangents(Vertex* verts, int numVerts, unsigned int* indices,
 	}
 }
 
-void Mesh::CreateBuffers(Vertex* vertices, unsigned int* indices, Microsoft::WRL::ComPtr<ID3D12Resource> device)
+void Mesh::CreateBuffers(Vertex* vertices, unsigned int* indices)
 {
 	// Create the two buffers
 	vertexBuffer = Graphics::CreateStaticBuffer(sizeof(Vertex), ARRAYSIZE(vertices), vertices);
@@ -153,7 +153,7 @@ void Mesh::CreateBuffers(Vertex* vertices, unsigned int* indices, Microsoft::WRL
 		initialVertexData.pSysMem = vertices;
 
 		// Create buffer
-		device->CreateBuffer(&vbd, &initialVertexData, vertexBuffer.GetAddressOf())
+		Graphics::Device->CreateBuffer(&vbd, &initialVertexData, vertexBuffer.GetAddressOf())
 		
 	}
 
@@ -172,7 +172,7 @@ void Mesh::CreateBuffers(Vertex* vertices, unsigned int* indices, Microsoft::WRL
 		initialIndexData.pSysMem = indices;
 
 		// Create buffer
-		device->CreateBuffer(&ibd, &initialIndexData, indexBuffer.GetAddressOf());
+		Graphics::Device->CreateBuffer(&ibd, &initialIndexData, indexBuffer.GetAddressOf());
 	}
 	*/
 }
@@ -182,28 +182,28 @@ void Mesh::Draw()
 	unsigned int stride = sizeof(Vertex);
 	unsigned int offset = 0;
 	{
+		/* DELETE
 		// Setup buffers for input assembler
 		context->IASetVertexBuffers(0, 1, vertexBuffer.GetAddressOf(), &stride, &offset);
 		context->IASetIndexBuffer(indexBuffer.Get(), DXGI_FORMAT_R32_UINT, 0);
 
 		// Tell Direct3D to draw
 		context->DrawIndexed(indexCount, 0, 0);
+		*/
 	}
 }
 
 Mesh::Mesh(Vertex* vertices,
 	unsigned int vertexCount,
 	unsigned int* indices,
-	unsigned int indexCount,
-	Microsoft::WRL::ComPtr<ID3D11DeviceContext> context,
-	Microsoft::WRL::ComPtr<ID3D11Device> device)
-	: indexCount(indexCount), vertexCount(vertexCount), context(context)
+	unsigned int indexCount)
+	: indexCount(indexCount), vertexCount(vertexCount)
 {
 	CalculateTangents(vertices, vertexCount, indices, indexCount);
-	CreateBuffers(vertices, indices, device);
+	CreateBuffers(vertices, indices);
 }
 
-Mesh::Mesh(const char* objFile, Microsoft::WRL::ComPtr<ID3D11DeviceContext> context, Microsoft::WRL::ComPtr<ID3D11Device> device) : context(context), vertexCount(0), indexCount(0)
+Mesh::Mesh(const char* objFile) : vertexCount(0), indexCount(0)
 {
 	// Author: Chris Cascioli
 	// Purpose: Basic .OBJ 3D model loading, supporting positions, uvs and normals
@@ -423,7 +423,7 @@ Mesh::Mesh(const char* objFile, Microsoft::WRL::ComPtr<ID3D11DeviceContext> cont
 	indexCount = indexCounter;
 	vertexCount = vertCounter;
 	CalculateTangents(&verts[0], vertexCount, &indices[0], indexCount);
-	CreateBuffers(&verts[0], &indices[0], device);
+	CreateBuffers(&verts[0], &indices[0]);
 }
 
 Mesh::~Mesh()

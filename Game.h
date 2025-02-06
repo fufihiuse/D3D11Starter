@@ -6,6 +6,7 @@
 #include <vector>
 #include "Camera.h"
 #include "Mesh.h"
+#include "Entity.h"
 
 class Game
 {
@@ -41,7 +42,10 @@ private:
 	std::shared_ptr<Camera> camera;
 
 	// Meshes
-	std::vector<Mesh> meshes;
+	std::vector<std::shared_ptr<Mesh>> meshes;
+
+	// Entities
+	std::vector<Entity> entities;
 
 	// Geometry
 	Microsoft::WRL::ComPtr<ID3D12Resource> vertexBuffer;
