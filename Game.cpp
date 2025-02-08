@@ -4,6 +4,7 @@
 #include "Input.h"
 #include "PathHelpers.h"
 #include "Window.h"
+#include "BufferStructs.h"
 
 #include <DirectXMath.h>
 
@@ -20,12 +21,10 @@ using namespace DirectX;
 // --------------------------------------------------------
 void Game::Initialize()
 {
-	CreateRootSigAndPipelineState();
-
 	// Create camera
 	camera = std::make_shared<Camera>(
 		Camera(
-			Window::AspectRatio(),		// Aspect Ratio
+			Window::AspectRatio(),							// Aspect Ratio
 			DirectX::XMFLOAT3(0, 0, -10),					// Initial Position
 			45.0f,											// FOV
 			0.01f,											// Near Plane
@@ -35,6 +34,7 @@ void Game::Initialize()
 			true											// Perspective Matrix
 		));
 
+	CreateRootSigAndPipelineState();
 	CreateGeometry();
 }
 
@@ -63,32 +63,6 @@ void Game::CreateGeometry()
 	XMFLOAT4 green = XMFLOAT4(0.0f, 1.0f, 0.0f, 1.0f);
 	XMFLOAT4 blue = XMFLOAT4(0.0f, 0.0f, 1.0f, 1.0f);
 
-	// Set up the vertices of the triangle we would like to draw
-	// - We're going to copy this array, exactly as it exists in CPU memory
-	//    over to a Direct3D-controlled data structure on the GPU (the vertex buffer)
-	// - Note: Since we don't have a camera or really any concept of
-	//    a "3d world" yet, we're simply describing positions within the
-	//    bounds of how the rasterizer sees our screen: [-1 to +1] on X and Y
-	// - This means (0,0) is at the very center of the screen.
-	// - These are known as "Normalized Device Coordinates" or "Homogeneous 
-	//    Screen Coords", which are ways to describe a position without
-	//    knowing the exact size (in pixels) of the image/window/etc.  
-	// - Long story short: Resizing the window also resizes the triangle,
-	//    since we're describing the triangle in terms of the window itself
-	Vertex vertices[] =
-	{
-		{ XMFLOAT3(+0.0f, +0.5f, +0.0f) },
-		{ XMFLOAT3(+0.5f, -0.5f, +0.0f) },
-		{ XMFLOAT3(-0.5f, -0.5f, +0.0f) },
-	};
-
-	// Set up indices, which tell us which vertices to use and in which order
-	// - This is redundant for just 3 vertices, but will be more useful later
-	// - Indices are technically not required if the vertices are in the buffer 
-	//    in the correct order and each one will be used exactly once
-	// - But just to see how it's done...
-	unsigned int indices[] = { 0, 1, 2 };
-
 	// Load meshes
 	meshes.push_back(std::make_shared<Mesh>(WideToNarrow(FixPath(L"../../Assets/Models/sphere.obj")).c_str()));
 	meshes.push_back(std::make_shared<Mesh>(WideToNarrow(FixPath(L"../../Assets/Models/helix.obj")).c_str()));
@@ -102,19 +76,6 @@ void Game::CreateGeometry()
 
 	entities.push_back(Entity(meshes[2], camera));
 	entities[2].GetTransform()->SetPosition(-2.5, 0, 0);
-
-	// Create the two buffers
-	vertexBuffer = Graphics::CreateStaticBuffer(sizeof(Vertex), ARRAYSIZE(vertices), vertices);
-	indexBuffer = Graphics::CreateStaticBuffer(sizeof(unsigned int), ARRAYSIZE(indices), indices);
-
-	// Set up the views
-	vbView.StrideInBytes = sizeof(Vertex);
-	vbView.SizeInBytes = sizeof(Vertex) * ARRAYSIZE(vertices);
-	vbView.BufferLocation = vertexBuffer->GetGPUVirtualAddress();
-
-	ibView.Format = DXGI_FORMAT_R32_UINT;
-	ibView.SizeInBytes = sizeof(unsigned int) * ARRAYSIZE(indices);
-	ibView.BufferLocation = indexBuffer->GetGPUVirtualAddress();
 }
 
 // --------------------------------------------------------
@@ -164,14 +125,6 @@ void Game::CreateRootSigAndPipelineState()
 
 	// Root Signature
 	{
-		// Describe and serialize the root signature
-		D3D12_ROOT_SIGNATURE_DESC rootSig = {};
-		rootSig.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
-		rootSig.NumParameters = 0;
-		rootSig.pParameters = 0;
-		rootSig.NumStaticSamplers = 0;
-		rootSig.pStaticSamplers = 0;
-
 		// Define a table of CBV's (constant buffer views)
 		D3D12_DESCRIPTOR_RANGE cbvTable = {};
 		cbvTable.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
@@ -326,6 +279,7 @@ void Game::OnResize()
 	scissorRect.bottom = Window::Height();
 
 	// Update matrices
+	if (camera == nullptr) return;
 	camera->UpdateProjectionMatrix(Window::AspectRatio());
 }
 
@@ -394,18 +348,36 @@ void Game::Draw(float deltaTime, float totalTime)
 		// Root sig (must happen before root descriptor table)
 		Graphics::CommandList->SetGraphicsRootSignature(rootSignature.Get());
 
+		// Set up descriptor heap for constant buffer views
+		Graphics::CommandList->SetDescriptorHeaps(1, Graphics::CBVSRVDescriptorHeap.GetAddressOf());
+
 		// Set up other commands for rendering
 		Graphics::CommandList->OMSetRenderTargets(
 			1, &Graphics::RTVHandles[Graphics::SwapChainIndex()], true, &Graphics::DSVHandle);
 		Graphics::CommandList->RSSetViewports(1, &viewport);
 		Graphics::CommandList->RSSetScissorRects(1, &scissorRect);
-		Graphics::CommandList->IASetVertexBuffers(0, 1, &vbView);
-		Graphics::CommandList->IASetIndexBuffer(&ibView);
 		Graphics::CommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
+		// Draw every entity
+		for (unsigned int i = 0; i < entities.size(); i++) {
+			// Fill vs buffer
+			VertexShaderExternalData vsBuffer = {};
+			vsBuffer.world = entities[i].GetTransform()->GetWorldMatrix();
+			vsBuffer.view = camera->GetViewMatrix();
+			vsBuffer.projection = camera->GetProjectionMatrix();
 
-		// Draw
-		Graphics::CommandList->DrawIndexedInstanced(3, 1, 0, 0, 0);
+			D3D12_GPU_DESCRIPTOR_HANDLE handle = Graphics::FillNextConstantBufferAndGetGPUDescriptorHandle(&vsBuffer, sizeof(vsBuffer));
+
+			Graphics::CommandList->SetGraphicsRootDescriptorTable(0, handle);
+
+			D3D12_VERTEX_BUFFER_VIEW vbView = entities[i].GetMesh()->GetVertexBufferView();
+			D3D12_INDEX_BUFFER_VIEW ibView = entities[i].GetMesh()->GetIndexBufferView();
+
+			Graphics::CommandList->IASetVertexBuffers(0, 1, &vbView);
+			Graphics::CommandList->IASetIndexBuffer(&ibView);
+
+			Graphics::CommandList->DrawIndexedInstanced(entities[i].GetMesh()->GetIndexCount(), 1, 0, 0, 0);
+		}
 	}
 
 	// Present

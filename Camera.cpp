@@ -75,52 +75,49 @@ void Camera::Update(float deltaTime)
 {
 	bool dirtyViewMatrix = false;
 
-	// Process user input
-	Input& input = Input::GetInstance();
-
 	// Move faster if holding shift
-	if (input.KeyDown(VK_LSHIFT))
+	if (Input::KeyDown(VK_LSHIFT))
 	{
 		deltaTime *= 4;
 	}
 
 	// Move camera
-	if (input.KeyDown('W'))
+	if (Input::KeyDown('W'))
 	{
 		transform.MoveRelative(0, 0, movementSpeed * deltaTime);
 		dirtyViewMatrix = true;
 	}
-	if (input.KeyDown('S'))
+	if (Input::KeyDown('S'))
 	{
 		transform.MoveRelative(0, 0, -movementSpeed * deltaTime);
 		dirtyViewMatrix = true;
 	}
-	if (input.KeyDown('A'))
+	if (Input::KeyDown('A'))
 	{
 		transform.MoveRelative(-movementSpeed * deltaTime, 0, 0);
 		dirtyViewMatrix = true;
 	}
-	if (input.KeyDown('D'))
+	if (Input::KeyDown('D'))
 	{
 		transform.MoveRelative(movementSpeed * deltaTime, 0, 0);
 		dirtyViewMatrix = true;
 	}
-	if (input.KeyDown(VK_SPACE))
+	if (Input::KeyDown(VK_SPACE))
 	{
 		transform.MoveRelative(0, movementSpeed * deltaTime, 0);
 		dirtyViewMatrix = true;
 	}
-	if (input.KeyDown(VK_CONTROL))
+	if (Input::KeyDown(VK_CONTROL))
 	{
 		transform.MoveRelative(0, -movementSpeed * deltaTime, 0);
 		dirtyViewMatrix = true;
 	}
 
-	if (input.MouseRightDown())
+	if (Input::MouseRightDown())
 	{
 		// Get mouse movement
-		float mouseMovementX = input.GetMouseXDelta() * mouseLookSpeed;
-		float mouseMovementY = input.GetMouseYDelta() * mouseLookSpeed;
+		float mouseMovementX = Input::GetMouseXDelta() * mouseLookSpeed;
+		float mouseMovementY = Input::GetMouseYDelta() * mouseLookSpeed;
 
 		DirectX::XMFLOAT3 currentRotation = transform.GetPitchYawRoll();
 		currentRotation.x += mouseMovementY;

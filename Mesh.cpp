@@ -124,73 +124,23 @@ void Mesh::CalculateTangents(Vertex* verts, int numVerts, unsigned int* indices,
 void Mesh::CreateBuffers(Vertex* vertices, unsigned int* indices)
 {
 	// Create the two buffers
-	vertexBuffer = Graphics::CreateStaticBuffer(sizeof(Vertex), ARRAYSIZE(vertices), vertices);
-	indexBuffer = Graphics::CreateStaticBuffer(sizeof(unsigned int), ARRAYSIZE(indices), indices);
+	vertexBuffer = Graphics::CreateStaticBuffer(sizeof(Vertex), vertexCount, vertices);
+	indexBuffer = Graphics::CreateStaticBuffer(sizeof(unsigned int), indexCount, indices);
 
 	// Set up views 
 	vbView.StrideInBytes = sizeof(Vertex);
-	vbView.SizeInBytes = sizeof(Vertex) * ARRAYSIZE(vertices);
+	vbView.SizeInBytes = sizeof(Vertex) * vertexCount;
 	vbView.BufferLocation = vertexBuffer->GetGPUVirtualAddress();
 
 	ibView.Format = DXGI_FORMAT_R32_UINT;
-	ibView.SizeInBytes = sizeof(unsigned int) * ARRAYSIZE(indices);
+	ibView.SizeInBytes = sizeof(unsigned int) * indexCount;
 	ibView.BufferLocation = indexBuffer->GetGPUVirtualAddress();
-
-
-	/* DELETE
-	{
-		// Create vertex description struct
-		D3D11_BUFFER_DESC vbd = {};
-		vbd.Usage = D3D11_USAGE_IMMUTABLE;				// Will never change
-		vbd.ByteWidth = sizeof(Vertex) * vertexCount;	// Number of vertices in buffer
-		vbd.BindFlags = D3D11_BIND_VERTEX_BUFFER;		// Vertex Buffer
-		vbd.CPUAccessFlags = 0;							// Note: can't access this data from C++
-		vbd.MiscFlags = 0;
-		vbd.StructureByteStride = 0;
-
-		// Create initial data
-		D3D11_SUBRESOURCE_DATA initialVertexData = {};
-		initialVertexData.pSysMem = vertices;
-
-		// Create buffer
-		Graphics::Device->CreateBuffer(&vbd, &initialVertexData, vertexBuffer.GetAddressOf())
-		
-	}
-
-	{
-		// Create index description struct
-		D3D11_BUFFER_DESC ibd = {};
-		ibd.Usage = D3D11_USAGE_IMMUTABLE;
-		ibd.ByteWidth = sizeof(unsigned int) * indexCount;
-		ibd.BindFlags = D3D11_BIND_INDEX_BUFFER;
-		ibd.CPUAccessFlags = 0;
-		ibd.MiscFlags = 0;
-		ibd.StructureByteStride = 0;
-
-		// Create initial data
-		D3D11_SUBRESOURCE_DATA initialIndexData = {};
-		initialIndexData.pSysMem = indices;
-
-		// Create buffer
-		Graphics::Device->CreateBuffer(&ibd, &initialIndexData, indexBuffer.GetAddressOf());
-	}
-	*/
 }
 
 void Mesh::Draw()
 {
 	unsigned int stride = sizeof(Vertex);
 	unsigned int offset = 0;
-	{
-		/* DELETE
-		// Setup buffers for input assembler
-		context->IASetVertexBuffers(0, 1, vertexBuffer.GetAddressOf(), &stride, &offset);
-		context->IASetIndexBuffer(indexBuffer.Get(), DXGI_FORMAT_R32_UINT, 0);
-
-		// Tell Direct3D to draw
-		context->DrawIndexed(indexCount, 0, 0);
-		*/
-	}
 }
 
 Mesh::Mesh(Vertex* vertices,
