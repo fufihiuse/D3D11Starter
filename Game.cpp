@@ -481,7 +481,7 @@ void Game::Draw(float deltaTime, float totalTime)
 				PixelShaderExternalData psBuffer = {};
 				psBuffer.uvScale = mat->GetUVScale();
 				psBuffer.uvOffset = mat->GetUVOffset();
-				psBuffer.cameraPosition = camera->GetTransform().GetPosition();
+				psBuffer.cameraPos = camera->GetTransform().GetPosition();
 				psBuffer.lightCount = lightCount;
 				memcpy(psBuffer.lights, &lights[0], sizeof(Light) * MAX_LIGHTS);
 
@@ -522,9 +522,9 @@ void Game::Draw(float deltaTime, float totalTime)
 			vsync ? 0 : DXGI_PRESENT_ALLOW_TEARING);
 		Graphics::AdvanceSwapChainIndex();
 
-		// Wait for the GPU to be done and then reset the command list & allocator
-		Graphics::WaitForGPU();
-		Graphics::ResetAllocatorAndCommandList();
+		// Reset allocator & cmd list for next frame
+		//Graphics::WaitForGPU();
+		Graphics::ResetAllocatorAndCommandList(Graphics::SwapChainIndex());
 	}
 }
 

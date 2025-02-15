@@ -1,4 +1,3 @@
-
 #include "ShaderInclude.hlsli"
 #define MAX_LIGHTS 128
 
@@ -6,7 +5,7 @@ cbuffer ExternalData : register(b0)
 {
     float2 uvScale;
     float2 uvOffset;
-    float3 cameraPosition;
+    float3 cameraPos;
     int lightCount;
     Light lights[MAX_LIGHTS];
 }
@@ -19,7 +18,7 @@ SamplerState BasicSampler : register(s0); // "s" registers for samplers
 
 float3 CalculateViewVector(float3 worldPosition)
 {
-    return normalize(cameraPosition - worldPosition);
+    return normalize(cameraPos - worldPosition);
 }
 
 float Attenuate(Light light, float3 worldPos)
@@ -32,9 +31,10 @@ float Attenuate(Light light, float3 worldPos)
 float3 CalculateDirectionalLight(Light directionalLight, VertexToPixel input, float3 surfaceColor, float3 specularColor, float metalness, float roughness)
 {
     // Get direction to light from entity
-    float3 dirToLight = -directionalLight.Direction;
-    float diff = DiffusePBR(input.normal, dirToLight);
+    float3 dirToLight = normalize(-directionalLight.Direction);
     
+    // Calculate light
+    float diff = DiffusePBR(input.normal, dirToLight);
     float3 F;
     float3 spec = MicrofacetBRDF(input.normal, dirToLight, CalculateViewVector(input.worldPos), roughness, specularColor, F);
     
@@ -47,13 +47,10 @@ float3 CalculateDirectionalLight(Light directionalLight, VertexToPixel input, fl
 float3 CalculatePointLight(Light pointLight, VertexToPixel input, float3 surfaceColor, float3 specularColor, float metalness, float roughness)
 {
     // Get direction to light from entity
-    float3 direction = normalize(input.worldPos - pointLight.Position);
-    float3 dirToLight = -direction;
+    float3 dirToLight = normalize(-pointLight.Direction);
+    float3 dirToCamera = normalize(cameraPos - input.worldPos);
     
-    
-    
-    // Calculate distance falloff
-    // NOT CURRENTLY WORKING?????? WHY
+    // Calculate light
     float attenuation = Attenuate(pointLight, input.worldPos);
     
     // Optimization if light isn't visible
@@ -70,8 +67,7 @@ float3 CalculatePointLight(Light pointLight, VertexToPixel input, float3 surface
     
         
         // Combine the final diffuse and specular values for this light
-        float3 total = (balancedDiff * surfaceColor + spec) * pointLight.Intensity * pointLight.Color;
-        return total * attenuation;
+        return (balancedDiff * surfaceColor + spec) * pointLight.Intensity * pointLight.Color * attenuation;
     }
 }
 
@@ -87,16 +83,18 @@ float3 CalculatePointLight(Light pointLight, VertexToPixel input, float3 surface
 float4 main(VertexToPixel input) : SV_TARGET
 {
     float3 albedoColor = pow(Albedo.Sample(BasicSampler, input.uv).rgb, 2.2f);
+    float3 unpackedNormal = NormalMap.Sample(BasicSampler, input.uv).rgb * 2 - 1;
+    float roughness = RoughnessMap.Sample(BasicSampler, input.uv).r;
+    float metalness = MetalnessMap.Sample(BasicSampler, input.uv).r;
     
     float3 totalLight = 0;
     
     // Normalize normal
     input.normal = normalize(input.normal);
     
-    return input.tangent.rgbb;
+    //return input.tangent.rgbb;
     
-    // Sample Normal Map
-    float3 unpackedNormal = NormalMap.Sample(BasicSampler, input.uv).rgb * 2 - 1;
+    // Normal Map
     unpackedNormal = normalize(unpackedNormal); // Don’t forget to normalize!
     
     // Feel free to adjust/simplify this code to fit with your existing shader(s)
@@ -110,9 +108,7 @@ float4 main(VertexToPixel input) : SV_TARGET
     // Assumes that input.normal is the normal later in the shader
     input.normal = mul(unpackedNormal, TBN); // Note multiplication order!
     
-    float roughness = RoughnessMap.Sample(BasicSampler, input.uv).r;
-    
-    float metalness = MetalnessMap.Sample(BasicSampler, input.uv).r;
+
     
     // Specular color determination -----------------
     // Assume albedo texture is actually holding specular color where metalness == 1
@@ -125,19 +121,7 @@ float4 main(VertexToPixel input) : SV_TARGET
         switch (lights[i].Type)
         {
             case LIGHT_TYPE_DIR:
-                // If this is the first light, apply the shadowing result
-                if (i == 0)
-                {
-                    // Calculates directional light for shadows
-                    float3 lightResult = CalculateDirectionalLight(lights[i], input, albedoColor, specularColor, metalness, roughness);
-                    
-                    // Add this light's result to the total light for this pixel
-                    totalLight += lightResult;
-                }
-                else
-                {
-                    totalLight += CalculateDirectionalLight(lights[i], input, albedoColor, specularColor, metalness, roughness);
-                }
+                totalLight += CalculateDirectionalLight(lights[i], input, albedoColor, specularColor, metalness, roughness);
                 break;
             
             case LIGHT_TYPE_POINT:

@@ -86,7 +86,7 @@ D3D12_GPU_DESCRIPTOR_HANDLE Graphics::FillNextConstantBufferAndGetGPUDescriptorH
 		// Calculate the CPU and GPU side handles for this descriptor
 		D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle = CBVSRVDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
 		D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle = CBVSRVDescriptorHeap->GetGPUDescriptorHandleForHeapStart();
-		
+
 
 		// Offset each by based on how many descriptors we've used
 		// Note: cbvDescriptorOffset is a COUNT of descriptors, not bytes so we must calculate the size
@@ -212,10 +212,14 @@ HRESULT Graphics::Initialize(unsigned int windowWidth, unsigned int windowHeight
 	// Set up D3D12 command allocator / queue / list,
 	// which are necessary pieces for issuing standard API calls
 	{
-		// Set up allocator
-		Device->CreateCommandAllocator(
-			D3D12_COMMAND_LIST_TYPE_DIRECT,
-			IID_PPV_ARGS(CommandAllocator.GetAddressOf()));
+		// Set up allocators
+		for (int i = 0; i < NumBackBuffers; i++)
+		{
+
+			Device->CreateCommandAllocator(
+				D3D12_COMMAND_LIST_TYPE_DIRECT,
+				IID_PPV_ARGS(CommandAllocator[i].GetAddressOf()));
+		}
 
 		// Command queue
 		D3D12_COMMAND_QUEUE_DESC qDesc = {};
@@ -227,7 +231,7 @@ HRESULT Graphics::Initialize(unsigned int windowWidth, unsigned int windowHeight
 		Device->CreateCommandList(
 			0, // Which physical GPU will handle these tasks?  0 for single GPU setup
 			D3D12_COMMAND_LIST_TYPE_DIRECT,// Type of command list
-			CommandAllocator.Get(),		// The allocator for this list
+			CommandAllocator[0].Get(),		// The allocator for this list
 			0,				// Initial pipeline state - none for now
 			IID_PPV_ARGS(CommandList.GetAddressOf()));
 	}
@@ -406,11 +410,16 @@ HRESULT Graphics::Initialize(unsigned int windowWidth, unsigned int windowHeight
 			DSVHandle);
 	}
 
-	// Create the fence for basic synchronization
+	// Create the fences for basic synchronization
 	{
+		// Wait for GPU
 		Device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(WaitFence.GetAddressOf()));
 		WaitFenceEvent = CreateEventEx(0, 0, 0, EVENT_ALL_ACCESS);
 		WaitFenceCounter = 0;
+
+		// Syncing frames while rendering
+		Device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(FrameSyncFence.GetAddressOf()));
+		FrameSyncFenceEvent = CreateEventEx(0, 0, 0, EVENT_ALL_ACCESS);
 	}
 
 	// Create the CBV/SRV descriptor heap
@@ -622,8 +631,26 @@ void Graphics::ResizeBuffers(unsigned int width, unsigned int height)
 // --------------------------------------------------------
 void Graphics::AdvanceSwapChainIndex()
 {
-	currentBackBufferIndex++;
-	currentBackBufferIndex %= NumBackBuffers;
+	// Signal into command queue
+	UINT64 currentFenceCounter = FrameSyncFenceCounters[currentBackBufferIndex];
+	CommandQueue->Signal(FrameSyncFence.Get(), currentFenceCounter);
+
+	// Calculate index of next buffer
+	unsigned int nextBuffer = (currentBackBufferIndex + 1) % NumBackBuffers;
+
+	// Check if we need to wait for the next frame
+	if (FrameSyncFence->GetCompletedValue() < FrameSyncFenceCounters[nextBuffer])
+	{
+		// Not finished rendering
+		FrameSyncFence->SetEventOnCompletion(FrameSyncFenceCounters[nextBuffer], FrameSyncFenceEvent);
+		WaitForSingleObject(FrameSyncFenceEvent, INFINITE);
+	}
+
+	// Fame is finished
+	FrameSyncFenceCounters[nextBuffer] = currentFenceCounter + 1;
+
+	// Return new index
+	currentBackBufferIndex = nextBuffer;
 }
 
 // --------------------------------------------------------
@@ -742,10 +769,10 @@ Microsoft::WRL::ComPtr<ID3D12Resource> Graphics::CreateStaticBuffer(
 // Always wait before reseting command allocator, as it should not
 // be reset while the GPU is processing a command list
 // --------------------------------------------------------
-void Graphics::ResetAllocatorAndCommandList()
+void Graphics::ResetAllocatorAndCommandList(unsigned int swapChainIndex)
 {
-	CommandAllocator->Reset();
-	CommandList->Reset(CommandAllocator.Get(), 0);
+	CommandAllocator[swapChainIndex]->Reset();
+	CommandList->Reset(CommandAllocator[swapChainIndex].Get(), 0);
 }
 
 // --------------------------------------------------------

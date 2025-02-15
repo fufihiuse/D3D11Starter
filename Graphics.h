@@ -14,7 +14,7 @@
 namespace Graphics
 {
 	// --- CONSTANTS ---
-	const unsigned int NumBackBuffers = 2;
+	const unsigned int NumBackBuffers = 3;
 
 	// --- GLOBAL VARS ---
 
@@ -23,7 +23,7 @@ namespace Graphics
 	inline Microsoft::WRL::ComPtr<IDXGISwapChain>	SwapChain;
 
 	// Command submission
-	inline Microsoft::WRL::ComPtr<ID3D12CommandAllocator>		CommandAllocator;
+	inline Microsoft::WRL::ComPtr<ID3D12CommandAllocator>		CommandAllocator[NumBackBuffers];
 	inline Microsoft::WRL::ComPtr<ID3D12CommandQueue>			CommandQueue;
 	inline Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList>	CommandList;
 
@@ -54,6 +54,11 @@ namespace Graphics
 	inline HANDLE							WaitFenceEvent = 0;
 	inline UINT64							WaitFenceCounter = 0;
 
+	// Frame sync fence
+	inline Microsoft::WRL::ComPtr<ID3D12Fence>	FrameSyncFence;
+	inline HANDLE								FrameSyncFenceEvent = 0;
+	inline UINT64								FrameSyncFenceCounters[NumBackBuffers]{};
+
 	// Debug Layer
 	inline Microsoft::WRL::ComPtr<ID3D12InfoQueue> InfoQueue;
 
@@ -75,7 +80,7 @@ namespace Graphics
 		size_t dataStride, size_t dataCount, void* data);
 
 	// Command list & synchronization
-	void ResetAllocatorAndCommandList();
+	void ResetAllocatorAndCommandList(unsigned int swapChainIndex);
 	void CloseAndExecuteCommandList();
 	void WaitForGPU();
 
