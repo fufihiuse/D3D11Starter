@@ -3,6 +3,7 @@
 #include "Mesh.h"
 #include "PathHelpers.h"
 #include "Graphics.h"
+#include "RayTracing.h"
 
 using namespace DirectX;
 
@@ -379,6 +380,7 @@ Mesh::Mesh(const char* objFile) : vertexCount(0), indexCount(0)
 	vertexCount = vertCounter;
 	CalculateTangents(&verts[0], vertexCount, &indices[0], indexCount);
 	CreateBuffers(&verts[0], &indices[0]);
+	raytracingData = RayTracing::CreateBottomLevelAccelerationStructureForMesh(this);
 }
 
 Mesh::~Mesh()

@@ -47,10 +47,10 @@ private:
 	std::vector<std::shared_ptr<Mesh>> meshes;
 
 	// Textures
-	std::vector<std::shared_ptr<Material>> materials;
+	std::vector<Material> materials;
 
 	// Entities
-	std::vector<Entity> entities;
+	std::vector<std::shared_ptr<Entity>> entities;
 
 	// Geometry
 	Microsoft::WRL::ComPtr<ID3D12Resource> vertexBuffer;

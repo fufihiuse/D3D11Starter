@@ -6,6 +6,7 @@
 #include "Window.h"
 #include "BufferStructs.h"
 #include "RayTracing.h"
+#include <ctime>
 
 #include <DirectXMath.h>
 
@@ -38,26 +39,26 @@ void Game::Initialize()
 	CreateRootSigAndPipelineState();
 
 	// Create textures
-	materials.push_back(std::make_unique<Material>(pipelineState));
-	materials[0]->AddTexture(Graphics::LoadTexture(FixPath(L"../../Assets/Textures/cobblestone_albedo.png").c_str()), 0);
-	materials[0]->AddTexture(Graphics::LoadTexture(FixPath(L"../../Assets/Textures/cobblestone_normals.png").c_str()), 1);
-	materials[0]->AddTexture(Graphics::LoadTexture(FixPath(L"../../Assets/Textures/cobblestone_roughness.png").c_str()), 2);
-	materials[0]->AddTexture(Graphics::LoadTexture(FixPath(L"../../Assets/Textures/cobblestone_metal.png").c_str()), 3);
-	materials[0]->FinalizeMaterial();
+	materials.push_back(Material(pipelineState));
+	materials[0].AddTexture(Graphics::LoadTexture(FixPath(L"../../Assets/Textures/cobblestone_albedo.png").c_str()), 0);
+	materials[0].AddTexture(Graphics::LoadTexture(FixPath(L"../../Assets/Textures/cobblestone_normals.png").c_str()), 1);
+	materials[0].AddTexture(Graphics::LoadTexture(FixPath(L"../../Assets/Textures/cobblestone_roughness.png").c_str()), 2);
+	materials[0].AddTexture(Graphics::LoadTexture(FixPath(L"../../Assets/Textures/cobblestone_metal.png").c_str()), 3);
+	materials[0].FinalizeMaterial();
 
-	materials.push_back(std::make_unique<Material>(pipelineState));
-	materials[1]->AddTexture(Graphics::LoadTexture(FixPath(L"../../Assets/Textures/wood_albedo.png").c_str()), 0);
-	materials[1]->AddTexture(Graphics::LoadTexture(FixPath(L"../../Assets/Textures/wood_normals.png").c_str()), 1);
-	materials[1]->AddTexture(Graphics::LoadTexture(FixPath(L"../../Assets/Textures/wood_roughness.png").c_str()), 2);
-	materials[1]->AddTexture(Graphics::LoadTexture(FixPath(L"../../Assets/Textures/wood_metal.png").c_str()), 3);
-	materials[1]->FinalizeMaterial();
+	materials.push_back(Material(pipelineState));
+	materials[1].AddTexture(Graphics::LoadTexture(FixPath(L"../../Assets/Textures/wood_albedo.png").c_str()), 0);
+	materials[1].AddTexture(Graphics::LoadTexture(FixPath(L"../../Assets/Textures/wood_normals.png").c_str()), 1);
+	materials[1].AddTexture(Graphics::LoadTexture(FixPath(L"../../Assets/Textures/wood_roughness.png").c_str()), 2);
+	materials[1].AddTexture(Graphics::LoadTexture(FixPath(L"../../Assets/Textures/wood_metal.png").c_str()), 3);
+	materials[1].FinalizeMaterial();
 
-	materials.push_back(std::make_unique<Material>(pipelineState));
-	materials[2]->AddTexture(Graphics::LoadTexture(FixPath(L"../../Assets/Textures/bronze_albedo.png").c_str()), 0);
-	materials[2]->AddTexture(Graphics::LoadTexture(FixPath(L"../../Assets/Textures/bronze_normals.png").c_str()), 1);
-	materials[2]->AddTexture(Graphics::LoadTexture(FixPath(L"../../Assets/Textures/bronze_roughness.png").c_str()), 2);
-	materials[2]->AddTexture(Graphics::LoadTexture(FixPath(L"../../Assets/Textures/bronze_metal.png").c_str()), 3);
-	materials[2]->FinalizeMaterial();
+	materials.push_back(Material(pipelineState));
+	materials[2].AddTexture(Graphics::LoadTexture(FixPath(L"../../Assets/Textures/bronze_albedo.png").c_str()), 0);
+	materials[2].AddTexture(Graphics::LoadTexture(FixPath(L"../../Assets/Textures/bronze_normals.png").c_str()), 1);
+	materials[2].AddTexture(Graphics::LoadTexture(FixPath(L"../../Assets/Textures/bronze_roughness.png").c_str()), 2);
+	materials[2].AddTexture(Graphics::LoadTexture(FixPath(L"../../Assets/Textures/bronze_metal.png").c_str()), 3);
+	materials[2].FinalizeMaterial();
 
 	CreateGeometry();
 }
@@ -92,24 +93,37 @@ void Game::CreateGeometry()
 	meshes.push_back(std::make_shared<Mesh>(WideToNarrow(FixPath(L"../../Assets/Models/helix.obj")).c_str()));
 	meshes.push_back(std::make_shared<Mesh>(WideToNarrow(FixPath(L"../../Assets/Models/cube.obj")).c_str()));
 
-	// Create a BLAS for a single mesh, then the TLAS for our “scene”
-	RayTracing::CreateBottomLevelAccelerationStructureForMesh(meshes[0].get());
-	RayTracing::CreateTopLevelAccelerationStructureForScene();
+	// Create entities
+	entities.push_back(std::make_shared<Entity>(meshes[0], camera, materials[0]));
+	entities[0]->GetMaterial()->SetColorTint(DirectX::XMFLOAT3(0.5, -10, 0));
+	entities[0]->GetTransform()->SetPosition(0, -10, 0);
+
+	entities.push_back(std::make_shared<Entity>(meshes[1], camera, materials[1]));
+	entities[1]->GetTransform()->SetPosition(2.5, -10, 0);
+	entities[1]->GetMaterial()->SetColorTint(DirectX::XMFLOAT3(0.4f, 0.3f, 0.5f));
+
+	entities.push_back(std::make_shared<Entity>(meshes[2], camera, materials[2]));
+	entities[2]->GetTransform()->SetPosition(-2.5, -10, 0);
+	entities[2]->GetMaterial()->SetColorTint(DirectX::XMFLOAT3(0.0f, 0.3f, 0.7f));
+
+
+	srand((unsigned int)time(NULL));
+
+	// Make a bunch more 
+	for (int i = 3; i < 200; i++) {
+		entities.push_back(std::make_shared<Entity>(meshes[rand() % 3], camera, materials[rand() % 3]));
+		entities[i]->GetMaterial()->SetColorTint(DirectX::XMFLOAT3((float)rand() / (float)RAND_MAX, (float)rand() / (float)RAND_MAX, (float)rand() / (float)RAND_MAX));
+		entities[i]->GetTransform()->SetPosition(-35.0f + (float)rand() / ((float)RAND_MAX / (35.0f + 35.0f)), -10, -35.0f + (float)rand() / ((float)RAND_MAX / (35.0f + 35.0f)));
+	}
+
+	// Create a TLAS for our “scene”
+	RayTracing::CreateTopLevelAccelerationStructureForScene(entities);
 
 	// Finalize any initialization and wait for the GPU
 	// before proceeding to the game loop
 	Graphics::CloseAndExecuteCommandList();
 	Graphics::WaitForGPU();
 	Graphics::ResetAllocatorAndCommandList(Graphics::SwapChainIndex());
-
-	// Create entities
-	entities.push_back(Entity(meshes[0], camera, materials[0]));
-
-	entities.push_back(Entity(meshes[1], camera, materials[1]));
-	entities[1].GetTransform()->SetPosition(2.5, 0, 0);
-
-	entities.push_back(Entity(meshes[2], camera, materials[2]));
-	entities[2].GetTransform()->SetPosition(-2.5, 0, 0);
 
 	// Create lights
 	lights[0].Type = LIGHT_TYPE_DIR;
@@ -408,9 +422,14 @@ void Game::Update(float deltaTime, float totalTime)
 	if (Input::KeyDown(VK_ESCAPE))
 		Window::Quit();
 
-	entities[0].GetTransform()->Rotate(0, 0, deltaTime * 2);
-	entities[1].GetTransform()->MoveAbsolute(0, -.025f * deltaTime, 0);
-	entities[2].GetTransform()->SetScale(1, 1, (float)abs(1 + sin(totalTime)));
+	entities[0]->GetTransform()->Rotate(0, 0, deltaTime * 2);
+	entities[1]->GetTransform()->MoveAbsolute(0, -.025f * deltaTime, 0);
+	entities[5]->GetTransform()->MoveAbsolute(1.5 * deltaTime, 0, 2 * deltaTime);
+	entities[2]->GetTransform()->SetScale(1, 1, (float)abs(1 + sin(totalTime)));
+
+	for (int i = 0; i < 200; i++) {
+		entities[i]->GetTransform()->MoveAbsolute(.5 * deltaTime, 0.1 * deltaTime, .2 * deltaTime);
+	}
 
 	camera->Update(deltaTime);
 }
@@ -424,6 +443,9 @@ void Game::Draw(float deltaTime, float totalTime)
 	// Grab the current back buffer for this frame
 	Microsoft::WRL::ComPtr<ID3D12Resource> currentBackBuffer =
 		Graphics::BackBuffers[Graphics::SwapChainIndex()];
+
+	// Create a TLAS for our “scene”
+	RayTracing::CreateTopLevelAccelerationStructureForScene(entities);
 
 	// Perform ray trace (which also copies the results to the back buffer)
 	RayTracing::Raytrace(camera, currentBackBuffer);
