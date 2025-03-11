@@ -5,6 +5,7 @@
 #include "PathHelpers.h"
 #include "Window.h"
 #include "BufferStructs.h"
+#include "RayTracing.h"
 
 #include <DirectXMath.h>
 
@@ -91,6 +92,16 @@ void Game::CreateGeometry()
 	meshes.push_back(std::make_shared<Mesh>(WideToNarrow(FixPath(L"../../Assets/Models/helix.obj")).c_str()));
 	meshes.push_back(std::make_shared<Mesh>(WideToNarrow(FixPath(L"../../Assets/Models/cube.obj")).c_str()));
 
+	// Create a BLAS for a single mesh, then the TLAS for our “scene”
+	RayTracing::CreateBottomLevelAccelerationStructureForMesh(meshes[0].get());
+	RayTracing::CreateTopLevelAccelerationStructureForScene();
+
+	// Finalize any initialization and wait for the GPU
+	// before proceeding to the game loop
+	Graphics::CloseAndExecuteCommandList();
+	Graphics::WaitForGPU();
+	Graphics::ResetAllocatorAndCommandList(Graphics::SwapChainIndex());
+
 	// Create entities
 	entities.push_back(Entity(meshes[0], camera, materials[0]));
 
@@ -135,6 +146,7 @@ void Game::CreateGeometry()
 // --------------------------------------------------------
 void Game::CreateRootSigAndPipelineState()
 {
+	/*
 	// Blobs to hold raw shader byte code used in several steps below
 	Microsoft::WRL::ComPtr<ID3DBlob> vertexShaderByteCode;
 	Microsoft::WRL::ComPtr<ID3DBlob> pixelShaderByteCode;
@@ -274,13 +286,13 @@ void Game::CreateRootSigAndPipelineState()
 		psoDesc.InputLayout.NumElements = inputElementCount;
 		psoDesc.InputLayout.pInputElementDescs = inputElements;
 		psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-		// Overall primitive topology type (triangle, line, etc.) is set here 
+		// Overall primitive topology type (triangle, line, etc.) is set here
 		// IASetPrimTop() is still used to set list/strip/adj options
 
 		// Root sig
 		psoDesc.pRootSignature = rootSignature.Get();
 
-		// -- Shaders (VS/PS) --- 
+		// -- Shaders (VS/PS) ---
 		psoDesc.VS.pShaderBytecode = vertexShaderByteCode->GetBufferPointer();
 		psoDesc.VS.BytecodeLength = vertexShaderByteCode->GetBufferSize();
 		psoDesc.PS.pShaderBytecode = pixelShaderByteCode->GetBufferPointer();
@@ -316,6 +328,13 @@ void Game::CreateRootSigAndPipelineState()
 			&psoDesc,
 			IID_PPV_ARGS(pipelineState.GetAddressOf()));
 	}
+	*/
+
+	// Initialize raytracing
+	RayTracing::Initialize(
+		Window::Width(),
+		Window::Height(),
+		FixPath(L"RayTracing.cso"));
 
 	// Set up the viewport and scissor rectangle
 	{
@@ -371,6 +390,9 @@ void Game::OnResize()
 	scissorRect.right = Window::Width();
 	scissorRect.bottom = Window::Height();
 
+	// Resize raytracing output texture
+	RayTracing::ResizeOutputUAV(Window::Width(), Window::Height());
+
 	// Update matrices
 	if (camera == nullptr) return;
 	camera->UpdateProjectionMatrix(Window::AspectRatio());
@@ -403,115 +425,11 @@ void Game::Draw(float deltaTime, float totalTime)
 	Microsoft::WRL::ComPtr<ID3D12Resource> currentBackBuffer =
 		Graphics::BackBuffers[Graphics::SwapChainIndex()];
 
-	// Clearing the render target
-	{
-		// Transition the back buffer from present to render target
-		D3D12_RESOURCE_BARRIER rb = {};
-		rb.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-		rb.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-		rb.Transition.pResource = currentBackBuffer.Get();
-		rb.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
-		rb.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
-		rb.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-		Graphics::CommandList->ResourceBarrier(1, &rb);
-
-		// Background color (Cornflower Blue in this case) for clearing
-		float color[] = { 0.4f, 0.6f, 0.75f, 1.0f };
-
-		// Clear the RTV
-		Graphics::CommandList->ClearRenderTargetView(
-			Graphics::RTVHandles[Graphics::SwapChainIndex()],
-			color,
-			0, 0); // No scissor rectangles
-
-		// Clear the depth buffer, too
-		Graphics::CommandList->ClearDepthStencilView(
-			Graphics::DSVHandle,
-			D3D12_CLEAR_FLAG_DEPTH,
-			1.0f,	// Max depth = 1.0f
-			0,	// Not clearing stencil, but need a value
-			0, 0);	// No scissor rects
-	}
-
-	// Rendering here!
-	{
-		// Set overall pipeline state
-		Graphics::CommandList->SetPipelineState(pipelineState.Get());
-
-		// Root sig (must happen before root descriptor table)
-		Graphics::CommandList->SetGraphicsRootSignature(rootSignature.Get());
-
-		// Set up descriptor heap for constant buffer views
-		Graphics::CommandList->SetDescriptorHeaps(1, Graphics::CBVSRVDescriptorHeap.GetAddressOf());
-
-		// Set up other commands for rendering
-		Graphics::CommandList->OMSetRenderTargets(
-			1, &Graphics::RTVHandles[Graphics::SwapChainIndex()], true, &Graphics::DSVHandle);
-		Graphics::CommandList->RSSetViewports(1, &viewport);
-		Graphics::CommandList->RSSetScissorRects(1, &scissorRect);
-		Graphics::CommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-
-		// Draw every entity
-		for (unsigned int i = 0; i < entities.size(); i++) {
-			// Get material
-			std::shared_ptr<Material> mat = entities[i].GetMaterial();
-
-			// Set pipeline state
-			Graphics::CommandList->SetPipelineState(mat->GetPipelineState().Get());
-
-			// Set SRV descriptor handle for textures
-			// Note: assumes table 2 is for textures (as per root sig)
-			Graphics::CommandList->SetGraphicsRootDescriptorTable(2, mat->GetFinalGPUHandleForSRVs());
-
-			// Fill Vertex Shader cbuffer
-			{
-				VertexShaderExternalData vsBuffer = {};
-				vsBuffer.world = entities[i].GetTransform()->GetWorldMatrix();
-				vsBuffer.view = camera->GetViewMatrix();
-				vsBuffer.projection = camera->GetProjectionMatrix();
-				vsBuffer.worldInvTranspose = entities[i].GetTransform()->GetWorldInverseTransposeMatrix();
-
-				D3D12_GPU_DESCRIPTOR_HANDLE handle = Graphics::FillNextConstantBufferAndGetGPUDescriptorHandle(&vsBuffer, sizeof(VertexShaderExternalData));
-
-				Graphics::CommandList->SetGraphicsRootDescriptorTable(0, handle);
-			}
-
-			// Fill Pixel Shader cbuffer
-			{
-				PixelShaderExternalData psBuffer = {};
-				psBuffer.uvScale = mat->GetUVScale();
-				psBuffer.uvOffset = mat->GetUVOffset();
-				psBuffer.cameraPos = camera->GetTransform().GetPosition();
-				psBuffer.lightCount = lightCount;
-				memcpy(psBuffer.lights, &lights[0], sizeof(Light) * MAX_LIGHTS);
-
-				D3D12_GPU_DESCRIPTOR_HANDLE handle = Graphics::FillNextConstantBufferAndGetGPUDescriptorHandle(&psBuffer, sizeof(PixelShaderExternalData));
-
-				Graphics::CommandList->SetGraphicsRootDescriptorTable(1, handle);
-			}
-
-			D3D12_VERTEX_BUFFER_VIEW vbView = entities[i].GetMesh()->GetVertexBufferView();
-			D3D12_INDEX_BUFFER_VIEW ibView = entities[i].GetMesh()->GetIndexBufferView();
-
-			Graphics::CommandList->IASetVertexBuffers(0, 1, &vbView);
-			Graphics::CommandList->IASetIndexBuffer(&ibView);
-
-			Graphics::CommandList->DrawIndexedInstanced(entities[i].GetMesh()->GetIndexCount(), 1, 0, 0, 0);
-		}
-	}
+	// Perform ray trace (which also copies the results to the back buffer)
+	RayTracing::Raytrace(camera, currentBackBuffer);
 
 	// Present
 	{
-		// Transition back to present
-		D3D12_RESOURCE_BARRIER rb = {};
-		rb.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-		rb.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-		rb.Transition.pResource = currentBackBuffer.Get();
-		rb.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
-		rb.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
-		rb.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-		Graphics::CommandList->ResourceBarrier(1, &rb);
-
 		// Must occur BEFORE present
 		Graphics::CloseAndExecuteCommandList();
 

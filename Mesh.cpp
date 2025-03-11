@@ -16,6 +16,11 @@ D3D12_VERTEX_BUFFER_VIEW Mesh::GetVertexBufferView()
 	return vbView;
 }
 
+unsigned int Mesh::GetVertexCount()
+{
+	return vertexCount;
+}
+
 Microsoft::WRL::ComPtr<ID3D12Resource> Mesh::GetIndexBuffer()
 {
 	return indexBuffer;

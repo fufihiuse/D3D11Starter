@@ -26,6 +26,7 @@ public:
 	Microsoft::WRL::ComPtr<ID3D12Resource> GetIndexBuffer();
 	D3D12_INDEX_BUFFER_VIEW GetIndexBufferView();
 
+	unsigned int GetVertexCount();
 	unsigned int GetIndexCount();
 	void Draw();
 
