@@ -27,6 +27,7 @@ public:
 	D3D12_INDEX_BUFFER_VIEW GetIndexBufferView();
 
 	unsigned int GetIndexCount();
+	unsigned int GetVertexCount();
 	void Draw();
 
 	Mesh(Vertex* vertices, unsigned int vertexCount, unsigned int* indices, unsigned int indexCount);

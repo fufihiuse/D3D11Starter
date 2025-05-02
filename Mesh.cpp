@@ -26,6 +26,11 @@ D3D12_INDEX_BUFFER_VIEW Mesh::GetIndexBufferView()
 	return ibView;
 }
 
+unsigned int Mesh::GetVertexCount()
+{
+	return vertexCount;
+}
+
 unsigned int Mesh::GetIndexCount()
 {
 	return indexCount;

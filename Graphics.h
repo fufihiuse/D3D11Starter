@@ -71,6 +71,15 @@ namespace Graphics
 	// Resource creation
 	Microsoft::WRL::ComPtr<ID3D12Resource> CreateStaticBuffer(
 		size_t dataStride, size_t dataCount, void* data);
+	Microsoft::WRL::ComPtr<ID3D12Resource> CreateBuffer(
+		UINT64 size,
+		D3D12_HEAP_TYPE heapType = D3D12_HEAP_TYPE_DEFAULT,
+		D3D12_RESOURCE_STATES state = D3D12_RESOURCE_STATE_COMMON,
+		D3D12_RESOURCE_FLAGS flags = D3D12_RESOURCE_FLAG_NONE,
+		UINT64 alignment = 0);
+	void ReserveDescriptorHeapSlot(
+		D3D12_CPU_DESCRIPTOR_HANDLE* reservedCPUHandle,
+		D3D12_GPU_DESCRIPTOR_HANDLE* reservedGPUHandle);
 
 	// Command list & synchronization
 	void ResetAllocatorAndCommandList();
