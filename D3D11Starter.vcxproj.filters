@@ -45,6 +45,9 @@
     <ClCompile Include="Entity.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Material.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="RayTracing.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -83,6 +86,12 @@
     <ClInclude Include="BufferStructs.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Material.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Light.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="RayTracing.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -94,8 +103,14 @@
     <FxCompile Include="VertexShader.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
-    <FxCompile Include="RayTracing.hlsl">
+    <FxCompile Include="Raytracing.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
+    <None Include="ShaderInclude.hlsli">
+      <Filter>Shaders</Filter>
+    </None>
   </ItemGroup>
 </Project>

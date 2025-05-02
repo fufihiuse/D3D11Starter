@@ -5,6 +5,8 @@
 #include <dxgi1_6.h>
 #include <string>
 #include <wrl/client.h>
+#include <memory>
+#include <vector>
 
 #pragma comment(lib, "d3d12.lib")
 #pragma comment(lib, "dxgi.lib")
@@ -12,7 +14,7 @@
 namespace Graphics
 {
 	// --- CONSTANTS ---
-	const unsigned int NumBackBuffers = 2;
+	const unsigned int NumBackBuffers = 3;
 
 	// --- GLOBAL VARS ---
 
@@ -21,9 +23,9 @@ namespace Graphics
 	inline Microsoft::WRL::ComPtr<IDXGISwapChain>	SwapChain;
 
 	// Command submission
-	inline Microsoft::WRL::ComPtr<ID3D12CommandAllocator>		CommandAllocator;
-	inline Microsoft::WRL::ComPtr<ID3D12CommandQueue>			CommandQueue;
 	inline Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList>	CommandList;
+	inline Microsoft::WRL::ComPtr<ID3D12CommandAllocator>		CommandAllocator[NumBackBuffers];
+	inline Microsoft::WRL::ComPtr<ID3D12CommandQueue>			CommandQueue;
 
 	// Rendering buffers & descriptors
 	inline Microsoft::WRL::ComPtr<ID3D12Resource>		BackBuffers[NumBackBuffers];
@@ -52,6 +54,11 @@ namespace Graphics
 	inline HANDLE							WaitFenceEvent = 0;
 	inline UINT64							WaitFenceCounter = 0;
 
+	// Frame sync fence
+	inline Microsoft::WRL::ComPtr<ID3D12Fence>	FrameSyncFence;
+	inline HANDLE								FrameSyncFenceEvent = 0;
+	inline UINT64								FrameSyncFenceCounters[NumBackBuffers]{};
+
 	// Debug Layer
 	inline Microsoft::WRL::ComPtr<ID3D12InfoQueue> InfoQueue;
 
@@ -71,21 +78,35 @@ namespace Graphics
 	// Resource creation
 	Microsoft::WRL::ComPtr<ID3D12Resource> CreateStaticBuffer(
 		size_t dataStride, size_t dataCount, void* data);
+
+	// Command list & synchronization
+	void ResetAllocatorAndCommandList(unsigned int swapChainIndex);
+	void CloseAndExecuteCommandList();
+	void WaitForGPU();
+
+	// Debug Layer
+	void PrintDebugMessages();
+
+	// Maximum number of texture descriptors (SRVs) we can have.
+	// Each material will have a chunk of this,
+	// Note: If we delayed the creation of this heap until 
+	//       after all textures and materials were created,
+	//       we could come up with an exact amount.  The following
+	//       constant ensures we (hopefully) never run out of room.
+	const unsigned int MaxTextureDescriptors = 1000;
+	D3D12_CPU_DESCRIPTOR_HANDLE LoadTexture(const wchar_t* file, bool generateMips = true);
+	D3D12_GPU_DESCRIPTOR_HANDLE CopySRVsToDescriptorHeapAndGetGPUDescriptorHandle(
+		D3D12_CPU_DESCRIPTOR_HANDLE firstDescriptorToCopy,
+		unsigned int numDescriptorsToCopy);
+
 	Microsoft::WRL::ComPtr<ID3D12Resource> CreateBuffer(
 		UINT64 size,
 		D3D12_HEAP_TYPE heapType = D3D12_HEAP_TYPE_DEFAULT,
 		D3D12_RESOURCE_STATES state = D3D12_RESOURCE_STATE_COMMON,
 		D3D12_RESOURCE_FLAGS flags = D3D12_RESOURCE_FLAG_NONE,
 		UINT64 alignment = 0);
+
 	void ReserveDescriptorHeapSlot(
 		D3D12_CPU_DESCRIPTOR_HANDLE* reservedCPUHandle,
 		D3D12_GPU_DESCRIPTOR_HANDLE* reservedGPUHandle);
-
-	// Command list & synchronization
-	void ResetAllocatorAndCommandList();
-	void CloseAndExecuteCommandList();
-	void WaitForGPU();
-
-	// Debug Layer
-	void PrintDebugMessages();
 }

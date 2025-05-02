@@ -5,7 +5,6 @@
 #include "PathHelpers.h"
 #include "Window.h"
 #include "BufferStructs.h"
-#include "RayTracing.h"
 
 #include <DirectXMath.h>
 
@@ -41,18 +40,48 @@ void Game::Initialize()
 			true											// Perspective Matrix
 		));
 
-	CreateRootSigAndPipelineState();
+	// Create textures
+	materials.push_back(std::make_unique<Material>(pipelineState));
+	materials[0]->AddTexture(Graphics::LoadTexture(FixPath(L"../../Assets/Textures/cobblestone_albedo.png").c_str()), 0);
+	materials[0]->AddTexture(Graphics::LoadTexture(FixPath(L"../../Assets/Textures/cobblestone_normals.png").c_str()), 1);
+	materials[0]->AddTexture(Graphics::LoadTexture(FixPath(L"../../Assets/Textures/cobblestone_roughness.png").c_str()), 2);
+	materials[0]->AddTexture(Graphics::LoadTexture(FixPath(L"../../Assets/Textures/cobblestone_metal.png").c_str()), 3);
+	materials[0]->SetColorTint(DirectX::XMFLOAT4(.5f, 0, 0, 1));
+	materials[0]->FinalizeMaterial();
+
+	materials.push_back(std::make_unique<Material>(pipelineState));
+	materials[1]->AddTexture(Graphics::LoadTexture(FixPath(L"../../Assets/Textures/wood_albedo.png").c_str()), 0);
+	materials[1]->AddTexture(Graphics::LoadTexture(FixPath(L"../../Assets/Textures/wood_normals.png").c_str()), 1);
+	materials[1]->AddTexture(Graphics::LoadTexture(FixPath(L"../../Assets/Textures/wood_roughness.png").c_str()), 2);
+	materials[1]->AddTexture(Graphics::LoadTexture(FixPath(L"../../Assets/Textures/wood_metal.png").c_str()), 3);
+	materials[1]->SetColorTint(DirectX::XMFLOAT4(.25f, .3f, 0, .25f));
+	materials[1]->FinalizeMaterial();
+
+	materials.push_back(std::make_unique<Material>(pipelineState));
+	materials[2]->AddTexture(Graphics::LoadTexture(FixPath(L"../../Assets/Textures/bronze_albedo.png").c_str()), 0);
+	materials[2]->AddTexture(Graphics::LoadTexture(FixPath(L"../../Assets/Textures/bronze_normals.png").c_str()), 1);
+	materials[2]->AddTexture(Graphics::LoadTexture(FixPath(L"../../Assets/Textures/bronze_roughness.png").c_str()), 2);
+	materials[2]->AddTexture(Graphics::LoadTexture(FixPath(L"../../Assets/Textures/bronze_metal.png").c_str()), 3);
+	materials[2]->SetColorTint(DirectX::XMFLOAT4(0, .3f, .33f, .44f));
+	materials[2]->FinalizeMaterial();
+
+	materials.push_back(std::make_unique<Material>(pipelineState));
+	materials[3]->AddTexture(Graphics::LoadTexture(FixPath(L"../../Assets/Textures/wood_albedo.png").c_str()), 0);
+	materials[3]->AddTexture(Graphics::LoadTexture(FixPath(L"../../Assets/Textures/wood_normals.png").c_str()), 1);
+	materials[3]->AddTexture(Graphics::LoadTexture(FixPath(L"../../Assets/Textures/wood_roughness.png").c_str()), 2);
+	materials[3]->AddTexture(Graphics::LoadTexture(FixPath(L"../../Assets/Textures/wood_metal.png").c_str()), 3);
+	materials[3]->SetColorTint(DirectX::XMFLOAT4(.5f, .7f, 0.4f, 0));
+	materials[3]->FinalizeMaterial();
+
 	CreateGeometry();
 
-	// Create a BLAS for a single mesh, then the TLAS for our “scene”
-	RayTracing::CreateBottomLevelAccelerationStructureForMesh(meshes[0].get());
-	RayTracing::CreateTopLevelAccelerationStructureForScene();
+	RayTracing::CreateTopLevelAccelerationStructureForScene(entities);
 
 	// Finalize any initialization and wait for the GPU
 	// before proceeding to the game loop
 	Graphics::CloseAndExecuteCommandList();
 	Graphics::WaitForGPU();
-	Graphics::ResetAllocatorAndCommandList();	
+	Graphics::ResetAllocatorAndCommandList(0);
 }
 
 
@@ -86,93 +115,45 @@ void Game::CreateGeometry()
 	meshes.push_back(std::make_shared<Mesh>(WideToNarrow(FixPath(L"../../Assets/Models/cube.obj")).c_str()));
 
 	// Create entities
-	entities.push_back(Entity(meshes[0], camera));
+	entities.push_back(Entity(meshes[0], camera, materials[0]));
 
-	entities.push_back(Entity(meshes[1], camera));
+	entities.push_back(Entity(meshes[1], camera, materials[1]));
 	entities[1].GetTransform()->SetPosition(2.5, 0, 0);
 
-	entities.push_back(Entity(meshes[2], camera));
+	entities.push_back(Entity(meshes[2], camera, materials[2]));
 	entities[2].GetTransform()->SetPosition(-2.5, 0, 0);
+
+	entities.push_back(Entity(meshes[1], camera, materials[3]));
+	entities[3].GetTransform()->SetPosition(5, 4, 0);
+
+	// Create lights
+	lights[0].Type = LIGHT_TYPE_DIR;
+	lights[0].Direction = { 1, -1, 0 };
+	lights[0].Color = { 1, 1, 1 };
+	lights[0].Intensity = 1.0f;
+
+	lights[1].Type = LIGHT_TYPE_DIR;
+	lights[1].Direction = { 1, 0, 0 };
+	lights[1].Color = { 1, 1, 1 };
+	lights[1].Intensity = 1.0f;
+
+	lights[2].Type = LIGHT_TYPE_DIR;
+	lights[2].Direction = { 0, 1, 1 };
+	lights[2].Color = { 1, 1, 1 };
+	lights[2].Intensity = 1.0f;
+
+	lights[3].Type = LIGHT_TYPE_POINT;
+	lights[3].Position = { 0, 10, 0 };
+	lights[3].Color = { 1, 1, 1 };
+	lights[3].Intensity = 1.0f;
+	lights[3].Range = 20.0f;
+
+	lights[4].Type = LIGHT_TYPE_POINT;
+	lights[4].Position = { -2.5, 0, 0 };
+	lights[4].Color = { 1, 1, 1 };
+	lights[4].Intensity = 1.0f;
+	lights[4].Range = 5.0f;
 }
-
-// --------------------------------------------------------
-// Loads the two basic shaders, then creates the root signature 
-// and pipeline state object for our very basic demo.
-// --------------------------------------------------------
-void Game::CreateRootSigAndPipelineState()
-{
-	// Blobs to hold raw shader byte code used in several steps below
-	Microsoft::WRL::ComPtr<ID3DBlob> vertexShaderByteCode;
-	Microsoft::WRL::ComPtr<ID3DBlob> pixelShaderByteCode;
-
-	// Load shaders
-	{
-		// Read our compiled vertex shader code into a blob
-		// - Essentially just "open the file and plop its contents here"
-		D3DReadFileToBlob(
-			FixPath(L"VertexShader.cso").c_str(), vertexShaderByteCode.GetAddressOf());
-		D3DReadFileToBlob(
-			FixPath(L"PixelShader.cso").c_str(), pixelShaderByteCode.GetAddressOf());
-	}
-
-	// Input layout
-	const unsigned int inputElementCount = 4;
-	D3D12_INPUT_ELEMENT_DESC inputElements[inputElementCount] = {};
-	{
-		inputElements[0].AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT;
-		inputElements[0].Format = DXGI_FORMAT_R32G32B32_FLOAT; // R32 G32 B32 = float3
-		inputElements[0].SemanticName = "POSITION";            // Name must match semantic in shader
-		inputElements[0].SemanticIndex = 0;                    // This is the first POSITION semantic
-
-		inputElements[1].AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT;
-		inputElements[1].Format = DXGI_FORMAT_R32G32_FLOAT;    // R32 G32 = float2
-		inputElements[1].SemanticName = "TEXCOORD";
-		inputElements[1].SemanticIndex = 0;                    // This is the first TEXCOORD semantic
-
-		inputElements[2].AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT;
-		inputElements[2].Format = DXGI_FORMAT_R32G32B32_FLOAT; // R32 G32 B32 = float3
-		inputElements[2].SemanticName = "NORMAL";
-		inputElements[2].SemanticIndex = 0;                    // This is the first NORMAL semantic
-
-		inputElements[3].AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT;
-		inputElements[3].Format = DXGI_FORMAT_R32G32B32_FLOAT; // R32 G32 B32 = float3
-		inputElements[3].SemanticName = "TANGENT";
-		inputElements[3].SemanticIndex = 0;                    // This is the first TANGENT semantic
-	}
-
-	// Root Signature
-	{
-	}
-
-	// Pipeline state
-	{
-	}
-
-	// Set up the viewport and scissor rectangle
-	{
-		// Set up the viewport so we render into the correct
-		// portion of the render target
-		viewport = {};
-		viewport.TopLeftX = 0;
-		viewport.TopLeftY = 0;
-		viewport.Width = (float)Window::Width();
-		viewport.Height = (float)Window::Height();
-		viewport.MinDepth = 0.0f;
-		viewport.MaxDepth = 1.0f;
-
-		// Define a scissor rectangle that defines a portion of
-		// the render target for clipping.  This is different from
-		// a viewport in that it is applied after the pixel shader.
-		// We need at least one of these, but we're rendering to 
-		// the entire window, so it'll be the same size.
-		scissorRect = {};
-		scissorRect.left = 0;
-		scissorRect.top = 0;
-		scissorRect.right = Window::Width();
-		scissorRect.bottom = Window::Height();
-	}
-}
-
 
 // --------------------------------------------------------
 // Handle resizing to match the new window size
@@ -180,33 +161,9 @@ void Game::CreateRootSigAndPipelineState()
 // --------------------------------------------------------
 void Game::OnResize()
 {
-	/* TODO: See if remove
-	// Resize the viewport and scissor rectangle
-	// Set up the viewport so we render into the correct
-	// portion of the render target
-	viewport = {};
-	viewport.TopLeftX = 0;
-	viewport.TopLeftY = 0;
-	viewport.Width = (float)Window::Width();
-	viewport.Height = (float)Window::Height();
-	viewport.MinDepth = 0.0f;
-	viewport.MaxDepth = 1.0f;
-
-	// Define a scissor rectangle that defines a portion of
-	// the render target for clipping.  This is different from
-	// a viewport in that it is applied after the pixel shader.
-	// We need at least one of these, but we're rendering to 
-	// the entire window, so it'll be the same size.
-	scissorRect = {};
-	scissorRect.left = 0;
-	scissorRect.top = 0;
-	scissorRect.right = Window::Width();
-	scissorRect.bottom = Window::Height();
-
 	// Update matrices
 	if (camera == nullptr) return;
 	camera->UpdateProjectionMatrix(Window::AspectRatio());
-	*/
 
 	// Resize raytracing output texture
 	RayTracing::ResizeOutputUAV(Window::Width(), Window::Height());
@@ -224,7 +181,7 @@ void Game::Update(float deltaTime, float totalTime)
 
 	entities[0].GetTransform()->Rotate(0, 0, deltaTime * 2);
 	entities[1].GetTransform()->MoveAbsolute(0, -.025f * deltaTime, 0);
-	entities[2].GetTransform()->SetScale(1, 1, abs(1 + sin(totalTime)));
+	entities[2].GetTransform()->SetScale(1, 1, (float)abs(1 + sin(totalTime)));
 
 	camera->Update(deltaTime);
 }
@@ -238,6 +195,8 @@ void Game::Draw(float deltaTime, float totalTime)
 	// Grab the current back buffer for this frame
 	Microsoft::WRL::ComPtr<ID3D12Resource> currentBackBuffer =
 		Graphics::BackBuffers[Graphics::SwapChainIndex()];
+
+	RayTracing::CreateTopLevelAccelerationStructureForScene(entities);
 
 	// Perform ray trace (which also copies the results to the back buffer)
 	RayTracing::Raytrace(camera, currentBackBuffer);
@@ -254,9 +213,9 @@ void Game::Draw(float deltaTime, float totalTime)
 			vsync ? 0 : DXGI_PRESENT_ALLOW_TEARING);
 		Graphics::AdvanceSwapChainIndex();
 
-		// Wait for the GPU to be done and then reset the command list & allocator
-		Graphics::WaitForGPU();
-		Graphics::ResetAllocatorAndCommandList();
+		// Reset allocator & cmd list for next frame
+		//Graphics::WaitForGPU();
+		Graphics::ResetAllocatorAndCommandList(Graphics::SwapChainIndex());
 	}
 }
 
