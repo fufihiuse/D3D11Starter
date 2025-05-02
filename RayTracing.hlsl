@@ -26,6 +26,16 @@ struct RayPayload
     uint rayPerPixelIndex;
 };
 
+
+struct MaterialData
+{
+    float4 color;
+    uint albedoIndex;
+    uint normalIndex;
+    uint roughIndex;
+    uint metalIndex;
+};
+
 // Note: We'll be using the built-in BuiltInTriangleIntersectionAttributes struct
 // for triangle attributes, so no need to define our own.  It contains a single float2.
 
@@ -44,6 +54,13 @@ cbuffer ObjectData : register(b1)
     float4 entityColor[MAX_INSTANCES_PER_BLAS];
 };
 
+cbuffer DrawData
+{
+    matrix world;
+    matrix view;
+    matrix proj;
+    MaterialData mat;
+}
 
 
 // === Resources ===
@@ -51,12 +68,19 @@ cbuffer ObjectData : register(b1)
 // Output UAV 
 RWTexture2D<float4> OutputColor : register(u0);
 
+
 // The actual scene we want to trace through (a TLAS)
 RaytracingAccelerationStructure SceneTLAS : register(t0);
 
 // Geometry buffers
 ByteAddressBuffer IndexBuffer : register(t1);
 ByteAddressBuffer VertexBuffer : register(t2);
+
+// Textures 
+Texture2D AllTextures[] : register(t0, space1);
+
+// Samplers
+SamplerState BasicSampler : register(s0);
 
 
 // === Helpers ===
