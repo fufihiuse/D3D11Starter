@@ -46,7 +46,7 @@ void Game::Initialize()
 	materials[0]->AddTexture(Graphics::LoadTexture(FixPath(L"../../Assets/Textures/cobblestone_normals.png").c_str()), 1);
 	materials[0]->AddTexture(Graphics::LoadTexture(FixPath(L"../../Assets/Textures/cobblestone_roughness.png").c_str()), 2);
 	materials[0]->AddTexture(Graphics::LoadTexture(FixPath(L"../../Assets/Textures/cobblestone_metal.png").c_str()), 3);
-	materials[0]->SetColorTint(DirectX::XMFLOAT4(.5f, 0, 0, 1));
+	materials[0]->SetColorTint(DirectX::XMFLOAT3(.5f, 0, 0));
 	materials[0]->FinalizeMaterial();
 
 	materials.push_back(std::make_unique<Material>(pipelineState));
@@ -54,7 +54,7 @@ void Game::Initialize()
 	materials[1]->AddTexture(Graphics::LoadTexture(FixPath(L"../../Assets/Textures/wood_normals.png").c_str()), 1);
 	materials[1]->AddTexture(Graphics::LoadTexture(FixPath(L"../../Assets/Textures/wood_roughness.png").c_str()), 2);
 	materials[1]->AddTexture(Graphics::LoadTexture(FixPath(L"../../Assets/Textures/wood_metal.png").c_str()), 3);
-	materials[1]->SetColorTint(DirectX::XMFLOAT4(.25f, .3f, 0, .25f));
+	materials[1]->SetColorTint(DirectX::XMFLOAT3(.25f, .3f, 0));
 	materials[1]->FinalizeMaterial();
 
 	materials.push_back(std::make_unique<Material>(pipelineState));
@@ -62,7 +62,7 @@ void Game::Initialize()
 	materials[2]->AddTexture(Graphics::LoadTexture(FixPath(L"../../Assets/Textures/bronze_normals.png").c_str()), 1);
 	materials[2]->AddTexture(Graphics::LoadTexture(FixPath(L"../../Assets/Textures/bronze_roughness.png").c_str()), 2);
 	materials[2]->AddTexture(Graphics::LoadTexture(FixPath(L"../../Assets/Textures/bronze_metal.png").c_str()), 3);
-	materials[2]->SetColorTint(DirectX::XMFLOAT4(0, .3f, .33f, .44f));
+	materials[2]->SetColorTint(DirectX::XMFLOAT3(0, .3f, .33f));
 	materials[2]->FinalizeMaterial();
 
 	materials.push_back(std::make_unique<Material>(pipelineState));
@@ -70,7 +70,7 @@ void Game::Initialize()
 	materials[3]->AddTexture(Graphics::LoadTexture(FixPath(L"../../Assets/Textures/wood_normals.png").c_str()), 1);
 	materials[3]->AddTexture(Graphics::LoadTexture(FixPath(L"../../Assets/Textures/wood_roughness.png").c_str()), 2);
 	materials[3]->AddTexture(Graphics::LoadTexture(FixPath(L"../../Assets/Textures/wood_metal.png").c_str()), 3);
-	materials[3]->SetColorTint(DirectX::XMFLOAT4(.5f, .7f, 0.4f, 0));
+	materials[3]->SetColorTint(DirectX::XMFLOAT3(.5f, .7f, 0.4f));
 	materials[3]->FinalizeMaterial();
 
 	CreateGeometry();

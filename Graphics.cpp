@@ -705,6 +705,17 @@ Microsoft::WRL::ComPtr<ID3D12Resource> Graphics::CreateStaticBuffer(
 }
 
 // --------------------------------------------------------
+// Calculates the index of a descriptor in the descriptor
+// heap given its GPU handle
+// 
+// handle - GPU descriptor handle of the descriptor to find
+// --------------------------------------------------------
+UINT Graphics::GetDescriptorIndex(D3D12_GPU_DESCRIPTOR_HANDLE handle)
+{
+	return (UINT)(handle.ptr - CBVSRVDescriptorHeap->GetGPUDescriptorHandleForHeapStart().ptr) / (UINT)CBVSRVDescriptorHeapIncrementSize;
+}
+
+// --------------------------------------------------------
 // Resets the command allocator and list
 // 
 // Always wait before reseting command allocator, as it should not

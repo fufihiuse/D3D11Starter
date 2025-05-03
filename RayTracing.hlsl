@@ -26,6 +26,22 @@ struct RayPayload
     uint rayPerPixelIndex;
 };
 
+struct RaytracingMaterial
+{
+    float3 color;
+    float roughness;
+	
+    float2 uvScale;
+    float2 uvOffset;
+	
+    float metal;
+    float3 padding;
+
+    uint albedoIndex;
+    uint normalMapIndex;
+    uint roughnessIndex;
+    uint metalnessIndex;
+};
 
 struct MaterialData
 {
@@ -51,7 +67,7 @@ cbuffer SceneData : register(b0)
 
 cbuffer ObjectData : register(b1)
 {
-    float4 entityColor[MAX_INSTANCES_PER_BLAS];
+    RaytracingMaterial materials[MAX_INSTANCES_PER_BLAS];
 };
 
 cbuffer DrawData
@@ -192,6 +208,28 @@ RayDesc CalcRayFromCamera(float2 rayIndices)
     return ray;
 }
 
+float3 NormalMapping(float3 unpackedNormal, float3 normal, float3 tangent)
+{    
+    // Feel free to adjust/simplify this code to fit with your existing shader(s)
+    // Simplifications include not re-normalizing the same vector more than once!
+    float3 N = normal; // Normalized earlier
+    float3 T = tangent; // Must be normalized here or before
+    T = normalize(T - N * dot(T, N)); // Gram-Schmidt assumes T&N are normalized!
+    float3 B = cross(T, N);
+    float3x3 TBN = float3x3(T, B, N);
+    
+    return mul(unpackedNormal, TBN);
+}
+
+float FresnelView(float3 n, float3 v, float f0)
+{
+	// Pre-calculations
+    float NdotV = saturate(dot(n, v));
+
+	// Final value
+    return f0 + (1 - f0) * pow(1 - NdotV, 5);
+}
+
 
 // === Shaders ===
 
@@ -262,22 +300,68 @@ void ClosestHit(inout RayPayload payload, BuiltInTriangleIntersectionAttributes 
         return;
     }
     
-    // Hit, adjust color
-    uint instanceID = InstanceID();
-    payload.color *= entityColor[instanceID].rgb;
-    
-    // Get worldspace normal
+    // Get worldspace and tangent normals
     Vertex hit = InterpolateVertices(PrimitiveIndex(), hitAttributes.barycentrics);
     float3 normal_WS = normalize(mul(hit.normal, (float3x3) ObjectToWorld4x3()));
+    float3 tangent_WS = normalize(mul(hit.tangent, (float3x3) ObjectToWorld4x3()));
+	
+    
+    // Get mat info
+    uint instanceID = InstanceID();
+    RaytracingMaterial mat = materials[instanceID];
+    float roughness = saturate(pow(mat.roughness, 2)); // Squared remap
+    float3 surfaceColor = mat.color.rgb;
+    float metal = mat.metal;
+   
+    // Check for texture
+    if (mat.albedoIndex != -1)
+    {
+        hit.uv = hit.uv * mat.uvScale + mat.uvOffset;
+        surfaceColor = pow(AllTextures[mat.albedoIndex].SampleLevel(BasicSampler, hit.uv, 0).rgb, 2.2f);
+        //
+        // TODO: REMOVE
+        //payload.color = surfaceColor;
+        //return;
+        //
+        //
+        roughness = pow(AllTextures[mat.roughnessIndex].SampleLevel(BasicSampler, hit.uv, 0).r, 2); // Squared remap
+        metal = AllTextures[mat.metalnessIndex].SampleLevel(BasicSampler, hit.uv, 0).r;
+
+        float3 normalFromMap = AllTextures[mat.normalMapIndex].SampleLevel(BasicSampler, hit.uv, 0).rgb * 2 - 1;
+        normal_WS = NormalMapping(normalFromMap, normal_WS, tangent_WS);
+    }
+    
     
     // RNG based on uniform 0-1 values
     float2 pixelUV = (float2) DispatchRaysIndex().xy / DispatchRaysDimensions().xy;
     float2 rng = rand2(pixelUV * (payload.recursionDepth + 1) + payload.rayPerPixelIndex + RayTCurrent());
     
-    // Interpolate between perfect reflection and random bounce based on roughness
+    
+    // Interpolate based on roughness & calc direction
     float3 refl = reflect(WorldRayDirection(), normal_WS);
     float3 randomBounce = RandomCosineWeightedHemisphere(rand(rng), rand(rng.yx), normal_WS);
-    float3 dir = normalize(lerp(refl, randomBounce, entityColor[InstanceID()].a));
+    //float3 dir = normalize(lerp(refl, randomBounce, roughness));
+    float3 dir = normalize(lerp(refl, randomBounce, 0.5f));
+    
+/*
+	// Interpolate between fully random bounce and roughness-based bounce based on fresnel/metal switch
+	// - If we're a "diffuse" ray, we need a random bounce
+	// - If we're a "specular" ray, we need the roughness-based bounce
+	// - Metals will have a fresnel result of 1.0, so this won't affect them
+    float fres = FresnelView(-WorldRayDirection(), normal_WS, lerp(0.04f, 1.0f, metal));
+    dir = normalize(lerp(randomBounce, dir, fres > rng.x));
+    
+    
+    // Determine how we color the ray:
+	// - If this is a "diffuse" ray, use the surface color
+	// - If this is a "specular" ray, assume a bounce without tint
+	// - Metals always tint, so the final lerp below takes care of that
+    float3 roughnessBounceColor = lerp(float3(1, 1, 1), surfaceColor, roughness); // Dir is roughness-based, so color is too
+    float3 diffuseColor = lerp(surfaceColor, roughnessBounceColor, fres > rng.x); // Diffuse "reflection" chance
+    float3 finalColor = lerp(diffuseColor, surfaceColor, metal); // Metal always tints
+    
+*/
+    payload.color *= surfaceColor;
     
     RayDesc ray;
     ray.Origin = WorldRayOrigin() + WorldRayDirection() * RayTCurrent();

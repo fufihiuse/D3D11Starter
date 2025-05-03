@@ -79,6 +79,8 @@ namespace Graphics
 	Microsoft::WRL::ComPtr<ID3D12Resource> CreateStaticBuffer(
 		size_t dataStride, size_t dataCount, void* data);
 
+	UINT GetDescriptorIndex(D3D12_GPU_DESCRIPTOR_HANDLE handle);
+
 	// Command list & synchronization
 	void ResetAllocatorAndCommandList(unsigned int swapChainIndex);
 	void CloseAndExecuteCommandList();

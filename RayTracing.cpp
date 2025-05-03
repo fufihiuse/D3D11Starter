@@ -674,7 +674,7 @@ MeshRaytracingData RayTracing::CreateBottomLevelAccelerationStructureForMesh(Mes
 // --------------------------------------------------------
 // Creates the top level accel structure, which can be made
 // up of one or more BLAS instances, each with their own
-// unique transform.  This demo uses exactly one BLAS instance.
+// unique transform.
 // --------------------------------------------------------
 void RayTracing::CreateTopLevelAccelerationStructureForScene(std::vector<Entity> scene)
 {
@@ -715,8 +715,34 @@ void RayTracing::CreateTopLevelAccelerationStructureForScene(std::vector<Entity>
 		// Set up the entity data for this entity, too
 		// - mesh index tells us which cbuffer
 		// - instance ID tells us which instance in that cbuffer
-		DirectX::XMFLOAT4 c = scene[i].GetMaterial()->GetColorTint();
-		entityData[meshBlasIndex].color[instDesc.InstanceID] = DirectX::XMFLOAT4(c.x, c.y, c.z, 1);
+		std::shared_ptr<Material> mat = scene[i].GetMaterial();
+		entityData[meshBlasIndex].materials[instDesc.InstanceID].color = mat->GetColorTint();
+		entityData[meshBlasIndex].materials[instDesc.InstanceID].roughness = mat->GetRoughness();
+		entityData[meshBlasIndex].materials[instDesc.InstanceID].metal = mat->GetMetal();
+		entityData[meshBlasIndex].materials[instDesc.InstanceID].uvScale = mat->GetUVScale();
+		entityData[meshBlasIndex].materials[instDesc.InstanceID].uvOffset = mat->GetUVOffset();
+
+		// Set up texture indices (-1 means no texture)
+		unsigned int aIndex = -1;
+		unsigned int nIndex = -1;
+		unsigned int rIndex = -1;
+		unsigned int mIndex = -1;
+
+		// Calculate the actual index of the texture descriptors (if this material has textures)
+		D3D12_GPU_DESCRIPTOR_HANDLE textureHandleStart = mat->GetFinalGPUHandleForSRVs();
+		if (textureHandleStart.ptr != 0)
+		{
+			// Note: This assumes all four textures are always present if the first one is
+			aIndex = Graphics::GetDescriptorIndex(textureHandleStart);
+			nIndex = aIndex + 1;
+			rIndex = aIndex + 2;
+			mIndex = aIndex + 3;
+		}
+
+		entityData[meshBlasIndex].materials[instDesc.InstanceID].albedoIndex = aIndex;
+		entityData[meshBlasIndex].materials[instDesc.InstanceID].normalMapIndex = nIndex;
+		entityData[meshBlasIndex].materials[instDesc.InstanceID].roughnessIndex = rIndex;
+		entityData[meshBlasIndex].materials[instDesc.InstanceID].metalnessIndex = mIndex;
 
 		// On to the next instance for this mesh
 		instanceIDs[meshBlasIndex]++;
