@@ -318,12 +318,6 @@ void ClosestHit(inout RayPayload payload, BuiltInTriangleIntersectionAttributes 
     {
         hit.uv = hit.uv * mat.uvScale + mat.uvOffset;
         surfaceColor = pow(AllTextures[mat.albedoIndex].SampleLevel(BasicSampler, hit.uv, 0).rgb, 2.2f);
-        //
-        // TODO: REMOVE
-        //payload.color = surfaceColor;
-        //return;
-        //
-        //
         roughness = pow(AllTextures[mat.roughnessIndex].SampleLevel(BasicSampler, hit.uv, 0).r, 2); // Squared remap
         metal = AllTextures[mat.metalnessIndex].SampleLevel(BasicSampler, hit.uv, 0).r;
 
@@ -331,19 +325,15 @@ void ClosestHit(inout RayPayload payload, BuiltInTriangleIntersectionAttributes 
         normal_WS = NormalMapping(normalFromMap, normal_WS, tangent_WS);
     }
     
-    
     // RNG based on uniform 0-1 values
     float2 pixelUV = (float2) DispatchRaysIndex().xy / DispatchRaysDimensions().xy;
     float2 rng = rand2(pixelUV * (payload.recursionDepth + 1) + payload.rayPerPixelIndex + RayTCurrent());
     
-    
     // Interpolate based on roughness & calc direction
     float3 refl = reflect(WorldRayDirection(), normal_WS);
     float3 randomBounce = RandomCosineWeightedHemisphere(rand(rng), rand(rng.yx), normal_WS);
-    //float3 dir = normalize(lerp(refl, randomBounce, roughness));
-    float3 dir = normalize(lerp(refl, randomBounce, 0.5f));
+    float3 dir = normalize(lerp(refl, randomBounce, roughness));
     
-/*
 	// Interpolate between fully random bounce and roughness-based bounce based on fresnel/metal switch
 	// - If we're a "diffuse" ray, we need a random bounce
 	// - If we're a "specular" ray, we need the roughness-based bounce
@@ -359,9 +349,7 @@ void ClosestHit(inout RayPayload payload, BuiltInTriangleIntersectionAttributes 
     float3 roughnessBounceColor = lerp(float3(1, 1, 1), surfaceColor, roughness); // Dir is roughness-based, so color is too
     float3 diffuseColor = lerp(surfaceColor, roughnessBounceColor, fres > rng.x); // Diffuse "reflection" chance
     float3 finalColor = lerp(diffuseColor, surfaceColor, metal); // Metal always tints
-    
-*/
-    payload.color *= surfaceColor;
+    payload.color *= finalColor;
     
     RayDesc ray;
     ray.Origin = WorldRayOrigin() + WorldRayDirection() * RayTCurrent();
