@@ -23,7 +23,6 @@ D3D12_GPU_DESCRIPTOR_HANDLE Material::GetFinalGPUHandleForSRVs()
 
 void Material::AddTexture(D3D12_CPU_DESCRIPTOR_HANDLE srv, int slot)
 {
-	// Valid slot?
 	if (finalized || slot < 0 || slot >= 128)
 		return;
 
@@ -36,11 +35,12 @@ void Material::FinalizeMaterial()
 {
 	if (finalized) return;
 
-	for (int i = 0; i < highestSRVSlot; i++)
+	for (int i = 0; i < 4; i++)
 	{
-		D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle = Graphics::CopySRVsToDescriptorHeapAndGetGPUDescriptorHandle(textureSRVsBySlot[i], 1);
 		if (i == 0)
-			finalGPUHandleForSRVs = gpuHandle;
+			finalGPUHandleForSRVs = Graphics::CopySRVsToDescriptorHeapAndGetGPUDescriptorHandle(textureSRVsBySlot[i], 1);
+		else
+			Graphics::CopySRVsToDescriptorHeapAndGetGPUDescriptorHandle(textureSRVsBySlot[i], 1);
 	}
 
 	finalized = true;

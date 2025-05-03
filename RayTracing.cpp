@@ -110,8 +110,8 @@ void RayTracing::CreateRaytracingRootSignatures()
 		// A single range (table) for ALL texture2D’s
 		D3D12_DESCRIPTOR_RANGE texture2DRange{};
 		texture2DRange.BaseShaderRegister = 0;
-		texture2DRange.NumDescriptors = UINT_MAX; // ALL THE DESCRIPTORS
-		texture2DRange.OffsetInDescriptorsFromTableStart = 0;
+		texture2DRange.NumDescriptors = UINT_MAX;
+		texture2DRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
 		texture2DRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
 		texture2DRange.RegisterSpace = 1;
 
@@ -722,28 +722,6 @@ void RayTracing::CreateTopLevelAccelerationStructureForScene(std::vector<Entity>
 		entityData[meshBlasIndex].materials[instDesc.InstanceID].uvScale = mat->GetUVScale();
 		entityData[meshBlasIndex].materials[instDesc.InstanceID].uvOffset = mat->GetUVOffset();
 
-		// Set up texture indices (-1 means no texture)
-		unsigned int aIndex = -1;
-		unsigned int nIndex = -1;
-		unsigned int rIndex = -1;
-		unsigned int mIndex = -1;
-
-		// Calculate the actual index of the texture descriptors (if this material has textures)
-		D3D12_GPU_DESCRIPTOR_HANDLE textureHandleStart = mat->GetFinalGPUHandleForSRVs();
-		if (textureHandleStart.ptr != 0)
-		{
-			// Note: This assumes all four textures are always present if the first one is
-			aIndex = Graphics::GetDescriptorIndex(textureHandleStart);
-			nIndex = aIndex + 1;
-			rIndex = aIndex + 2;
-			mIndex = aIndex + 3;
-		}
-
-		entityData[meshBlasIndex].materials[instDesc.InstanceID].albedoIndex = aIndex;
-		entityData[meshBlasIndex].materials[instDesc.InstanceID].normalMapIndex = nIndex;
-		entityData[meshBlasIndex].materials[instDesc.InstanceID].roughnessIndex = rIndex;
-		entityData[meshBlasIndex].materials[instDesc.InstanceID].metalnessIndex = mIndex;
-
 		// On to the next instance for this mesh
 		instanceIDs[meshBlasIndex]++;
 	}
@@ -905,6 +883,7 @@ void RayTracing::Raytrace(std::shared_ptr<Camera> camera, Microsoft::WRL::ComPtr
 		DXRCommandList->SetComputeRootShaderResourceView(1,			// Second is SRV for accel structure (as root SRV, no table needed)
 			TLAS->GetGPUVirtualAddress());
 		DXRCommandList->SetComputeRootDescriptorTable(2, cbuffer);	// Third is CBV
+		DXRCommandList->SetComputeRootDescriptorTable(3, heap[0]->GetGPUDescriptorHandleForHeapStart()); // Fourth is heap for bindless
 
 		// Dispatch rays
 		D3D12_DISPATCH_RAYS_DESC dispatchDesc = {};

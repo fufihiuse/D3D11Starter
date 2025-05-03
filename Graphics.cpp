@@ -705,17 +705,6 @@ Microsoft::WRL::ComPtr<ID3D12Resource> Graphics::CreateStaticBuffer(
 }
 
 // --------------------------------------------------------
-// Calculates the index of a descriptor in the descriptor
-// heap given its GPU handle
-// 
-// handle - GPU descriptor handle of the descriptor to find
-// --------------------------------------------------------
-UINT Graphics::GetDescriptorIndex(D3D12_GPU_DESCRIPTOR_HANDLE handle)
-{
-	return (UINT)(handle.ptr - CBVSRVDescriptorHeap->GetGPUDescriptorHandleForHeapStart().ptr) / (UINT)CBVSRVDescriptorHeapIncrementSize;
-}
-
-// --------------------------------------------------------
 // Resets the command allocator and list
 // 
 // Always wait before reseting command allocator, as it should not
@@ -868,10 +857,8 @@ D3D12_CPU_DESCRIPTOR_HANDLE Graphics::LoadTexture(const wchar_t* file, bool gene
 D3D12_GPU_DESCRIPTOR_HANDLE Graphics::CopySRVsToDescriptorHeapAndGetGPUDescriptorHandle(D3D12_CPU_DESCRIPTOR_HANDLE firstDescriptorToCopy, unsigned int numDescriptorsToCopy)
 {
 	// Grab the actual heap start on both sides and offset to the next open SRV portion
-	D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle =
-		CBVSRVDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
-	D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle =
-		CBVSRVDescriptorHeap->GetGPUDescriptorHandleForHeapStart();
+	D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle =	CBVSRVDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
+	D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle =	CBVSRVDescriptorHeap->GetGPUDescriptorHandleForHeapStart();
 
 	cpuHandle.ptr += (SIZE_T)srvDescriptorOffset * CBVSRVDescriptorHeapIncrementSize;
 	gpuHandle.ptr += (SIZE_T)srvDescriptorOffset * CBVSRVDescriptorHeapIncrementSize;
