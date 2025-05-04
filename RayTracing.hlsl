@@ -45,7 +45,15 @@ struct RaytracingMaterial
 
 struct MaterialData
 {
-    float4 color;
+    float3 color;
+    float roughness;
+
+    float2 uvScale;
+    float2 uvOffset;
+    
+    float metal;
+    float3 padding;
+    
     uint albedoIndex;
     uint normalIndex;
     uint roughIndex;

@@ -722,6 +722,26 @@ void RayTracing::CreateTopLevelAccelerationStructureForScene(std::vector<Entity>
 		entityData[meshBlasIndex].materials[instDesc.InstanceID].uvScale = mat->GetUVScale();
 		entityData[meshBlasIndex].materials[instDesc.InstanceID].uvOffset = mat->GetUVOffset();
 
+		// Texture indices
+		unsigned int texIdx[4] = {0};
+		// albedo, normal, roughness, metalness
+
+		// Get index of texture descriptors
+		D3D12_GPU_DESCRIPTOR_HANDLE texStart = mat->GetFinalGPUHandleForSRVs();
+		if (texStart.ptr)
+		{
+			UINT texDescIdx = Graphics::GetDescriptorIndex(texStart);
+			for (int i = 0; i < 4; i++)
+			{
+				texIdx[i] = texDescIdx + i;
+			}
+		}
+
+		entityData[meshBlasIndex].materials[instDesc.InstanceID].albedoIndex = texIdx[0];
+		entityData[meshBlasIndex].materials[instDesc.InstanceID].normalMapIndex = texIdx[1];
+		entityData[meshBlasIndex].materials[instDesc.InstanceID].roughnessIndex = texIdx[2];
+		entityData[meshBlasIndex].materials[instDesc.InstanceID].metalnessIndex = texIdx[3];
+
 		// On to the next instance for this mesh
 		instanceIDs[meshBlasIndex]++;
 	}
